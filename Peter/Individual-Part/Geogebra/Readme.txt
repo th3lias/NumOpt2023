@@ -1,0 +1,1 @@
+Alle kurven sind auf der geogebra website mit dem account fischerpeter700@gmail.com gespeichert
