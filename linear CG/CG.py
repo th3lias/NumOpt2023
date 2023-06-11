@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def conjugate_gradient(A, b, x0, tol=1e-6, max_iter=100000):
     x = x0.copy().flatten()
     r = A.dot(x) - b.copy().flatten()
@@ -10,7 +11,7 @@ def conjugate_gradient(A, b, x0, tol=1e-6, max_iter=100000):
             break
 
         Ap = A.dot(p)
-        alpha = np.dot(r, r) / np.dot(p, Ap,)
+        alpha = np.dot(r, r) / np.dot(p, Ap, )
         x = x + alpha * p
         r_new = r + alpha * Ap
         beta = np.dot(r_new, r_new) / np.dot(r, r)
@@ -51,7 +52,8 @@ def steepest_descent(f, grad_f, x_0, eigenvalues, minimizer, Q, eps=1e-6, max_it
 
     x_min = x
     f_min = f(x_min)
-    grad_norm = np.dot(grad.flatten(), grad.flatten())
+
+    grad_norm = np.linalg.norm(grad.flatten())
     return x_min, f_min, grad_norm, n_iter, n_inequality_satisfied
 
 
@@ -92,7 +94,6 @@ def problem2():
         eigenvalues.append(eig_val)
         eigenvectors.append(eig_vec)
 
-
     i = 1
     print("------------------- CG -------------------")
     for n, Q, b, x_0, minimizer, eig_val in zip(n_values, Qs, bs, x_0s, minimizers, eigenvalues):
@@ -105,12 +106,13 @@ def problem2():
         f_grad = lambda x: quadratic_function_grad(x, Q, b)
 
         x_min, n_iter, f_min = conjugate_gradient(Q, b, x_0)
-        grad_norm = np.dot(f_grad(x_min).flatten(), f_grad(x_min).flatten())
+        # grad_norm = np.dot(f_grad(x_min).flatten(), f_grad(x_min).flatten())
+        grad_norm = np.linalg.norm(f_grad(x_min).flatten())
         print("Minimum found after {0} iterations: {1}".format(n_iter, x_min))
         print("Minimum value: {0}".format(f_min))
         print("||grad f(x)||:", grad_norm)
-        print("Difference to true minimum: ",
-              np.dot((b - f_min).flatten(), (b - f_min).flatten()))
+        print("Difference to true minimum value: ",
+              np.linalg.norm((b - f_min).flatten()))
 
         i = i + 1
     print("-------------------------------------------------------------")
@@ -127,14 +129,16 @@ def problem2():
         f = lambda x: quadratic_function(x, Q, b)
         f_grad = lambda x: quadratic_function_grad(x, Q, b)
 
-        x_min, f_min, grad_norm, n_iter, n_inequalitiy = steepest_descent(f, f_grad, x_0, eig_val, minimizer, Q, max_iter=1000000)
+        x_min, f_min, grad_norm, n_iter, n_inequalitiy = steepest_descent(f, f_grad, x_0, eig_val, minimizer, Q,
+                                                                          max_iter=1000000)
         print("Minimum found after {0} iterations: {1}".format(n_iter, x_min))
         print("Minimum value: {0}".format(f_min))
         print("||grad f(x)||:", grad_norm)
-        print("Difference to true minimum: ",
-              np.dot((b - f_min).flatten(), (b - f_min).flatten()))
+        print("Difference to true minimum value: ",
+              np.linalg.norm((f(minimizer) - f_min).flatten()))
 
         i = i + 1
     print("-------------------------------------------------------------")
+
 
 problem2()
