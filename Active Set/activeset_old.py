@@ -71,7 +71,7 @@ def activesetquadraticbigm(x, d, G, ce, be, ci, bi, W=[]):
             p = -npl[0:n + 1]
 
             if hasnegigenval:
-                cdirnegcurv = False;
+                cdirnegcurv = False
                 Q, R = numpy.linalg.qr(numpy.transpose(A), 'complete')
                 Z = Q[:, na:]
                 if not Z.shape[1] == 0:
@@ -312,7 +312,7 @@ if __name__ == '__main__':
             # measure running time
 
             start = time.time()
-            x_final, noOfIterations = (activesetquadraticprogramming(list(x), list(c), list(G), [], [], list(bi), list(ai), tol, [False] * len(bi)))
+            x_final, noOfIterations = (activesetquadraticbigm(list(x), list(c), list(G), [], [], list(bi), list(ai), [False] * len(bi)))
             end = time.time()
             print('No of iterations: ', noOfIterations)
             print('Time taken: ', end - start)

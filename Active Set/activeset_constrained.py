@@ -1,13 +1,21 @@
 import math
 import sys
+import time
 
 import numpy
 import numpy as np
+import scipy.optimize
+from scipy.optimize import minimize
+
+from numpy.linalg import LinAlgError
 from numpy.testing import assert_allclose, assert_equal, \
     assert_almost_equal, assert_raises
 from scipy.optimize import linprog
 
-from activeset import ActiveSet
+from activeset_base import ActiveSet
+
+import warnings
+warnings.filterwarnings("ignore")
 class ConstrainedLS(ActiveSet):
     """
     An active set method for constrained least squares
@@ -61,7 +69,7 @@ def convert_to_standard_QP(M, y, x):
     # objective function = 1/2 * x^T * G * x + c^T * x = 1/2(x^T M^T M x - 2 y^T M x (+y^T y))
     q_x = (1 / 2) * (x @ M.T @ M @ x - 2 * y.T @ M @ x + y @ y)
     G = M.T @ M
-    c = 2 * M.T @ y
+    c = -2 * M.T @ y
 
     # constraints = 1*x<=1
     ai = np.zeros((m, n))
@@ -124,7 +132,7 @@ def simplextableau(c, A, b):
         res = 'Iterations exceed maximum number, cycling may be happening.'
     return x, opt[0], res
 
-def find_feasible_point(A, b):
+def find_feasible_point(A, b ,method):
     n = A.shape[1]  # Dimension of variables
 
     # Formulate the Phase I problem
@@ -135,7 +143,10 @@ def find_feasible_point(A, b):
     b_phase1 = b
 
     # Solve the Phase I problem
-    result_phase1 = linprog(c_phase1, A_ub=A_phase1, b_ub=b_phase1)
+    if method == 'custom':
+        return np.random.rand(n)
+
+    result_phase1 = linprog(c_phase1, A_ub=A_phase1, b_ub=b_phase1, method=method)
 
     if result_phase1.success:
         feasible_point = result_phase1.x[:-1]  # Extract the feasible point
@@ -143,31 +154,86 @@ def find_feasible_point(A, b):
     else:
         print("No feasible point found.")
         return None
+
+
+def objective_function(x, M, y):
+    return 0.5 * np.linalg.norm(M.dot(x) - y)**2
 def main():
-    cls = ConstrainedLS(atol=1e-7)
+    tol = 1e-7
+    cls = ConstrainedLS(atol=tol)
 
     for m in range(5):
         M = np.random.randn(m+1, 2 * (m + 1)) + 1
         # compute eigenvalues from M and choose as y
         y = np.linalg.eig(M.T @ M)[0][:m+1]
-        i = 0
-        while i <= 3:
+
+        for method in ['interior-point', 'highs', 'custom']:
             x = np.random.randn(2 * (m+1))
             G, c, ai, bi = convert_to_standard_QP(M, y, x)
 
-            try:
-                x = find_feasible_point(ai, bi)
-                ai = list(ai)
-                bi = list(bi)
-                x0 = list(x)
-                c = list(c)
-                G = list(G)
-                x, scr, nit = cls(G, c, Ci=ai, di=bi, x0=x0)
-                i = i + 1
-            except ValueError:
-                print("Infeasible point")
+            x0 = find_feasible_point(ai, bi, method)
 
-            print("x(final) = \n", x)
+            ai = list(ai)
+            bi = list(bi)
+            c = list(c)
+            G = list(G)
+            # calculate runnning time
+            start = time.time()
+            x, scr, nit = cls(G, c, Ci=ai, di=bi, x0=x0)
+            end = time.time()
+
+            print("M: ", M)
+            print("y: ", y)
+            print("ai: ", ai)
+            print("bi: ", bi)
+            print("final iterate: ", x)
+            print("stopping criterion: ", tol)
+            print("number of iterations: ", nit)
+            print("running time: ", end - start)
+            optimization_result = minimize(objective_function, x0, args=(M, y))
+            print("unconstrained result: ", optimization_result.x)
+            print("#############################################")
+
+    M_tilde = np.array([[1, 1, 0, 0], [0, 0, 1, 1]])
+    M = np.block([[M_tilde, np.zeros((2, 4)), np.zeros((2, 4)), np.zeros((2, 4)), np.zeros((2, 4))],
+                  [np.zeros((2, 4)), M_tilde, np.zeros((2, 4)), np.zeros((2, 4)), np.zeros((2, 4))],
+                  [np.zeros((2, 4)), np.zeros((2, 4)), M_tilde, np.zeros((2, 4)), np.zeros((2, 4))],
+                  [np.zeros((2, 4)), np.zeros((2, 4)), np.zeros((2, 4)), M_tilde, np.zeros((2, 4))],
+                  [np.zeros((2, 4)), np.zeros((2, 4)), np.zeros((2, 4)), np.zeros((2, 4)), M_tilde]])
+
+    y = np.array([1, -2, 3, -4, 5, -5, 4, -3, 2, -1])
+    for method in ['interior-point', 'revised simplex', 'custom', 'custom', 'custom']:
+        x = np.random.randn(2 * M.shape[0])
+        G, c, ai, bi = convert_to_standard_QP(M, y, x)
+
+        x0 = find_feasible_point(ai, bi, method)
+        ai = list(ai)
+        bi = list(bi)
+        c = list(c)
+        G = list(G)
+        optimization_result = minimize(objective_function, x0, args=(M, y))
+        print("unconstrained result: ", optimization_result.x)
+        # calculate runnning time
+        start = time.time()
+        try:
+
+            x, scr, nit = cls(G, c, Ci=ai, di=bi, x0=x0)
+        except LinAlgError:
+            print("LinAlgError")
+            continue
+        end = time.time()
+
+        print("M: ", M)
+        print("y: ", y)
+        print("ai: ", ai)
+        print("bi: ", bi)
+        print("final iterate: ", x)
+        print("stopping criterion: ", tol)
+        print("number of iterations: ", nit)
+        print("running time: ", end - start)
+
+        print("#############################################")
+    print("finished")
 
 if __name__ == "__main__":
     sys.exit(int(main() or 0))

@@ -1,10 +1,10 @@
 import sys
-import time
 import warnings
 from logging import warn
 
 import numpy as np
 from scipy.optimize import linprog
+
 
 class ActiveSet(object):
     """
@@ -17,7 +17,6 @@ class ActiveSet(object):
     def __init__(self, atol=1e-8, maxiter=100):
         self.tol = atol
         self.maxiter = maxiter
-
 
     # initialize instance variables for each new run:
     #   1) neq : number of equality constraints
@@ -54,12 +53,10 @@ class ActiveSet(object):
         self.cl = []
         self.cu = []
 
-
     # virtual method for calculating objective function
     # Hessian matrix + target vector
     def _calc_Hessians(self):
         raise NotImplementedError('ActiveSet: _calc_Hessians is virtual')
-
 
     # virtual method for calculating the current active set
     # Hessian vector
@@ -67,12 +64,10 @@ class ActiveSet(object):
         str = 'ActiveSet: _calc_as_Hessian_vector is virtual'
         raise NotImplementedError(str)
 
-
     # virtual method for calculating the objective function
     # for a given solution
     def _calc_objective(self, x):
         raise NotImplementedError('ActiveSet: _calc_objective is virtual')
-
 
     # check if solution is feasible
     def _feasible(self, x):
@@ -88,11 +83,10 @@ class ActiveSet(object):
             return 0
         return 1
 
-
     # add constraint to the active set KKT system
     def _add_active_constraint(self, cidx):
         # save the contraint index
-        self.acidx = np.vstack((self.acidx, np.asarray(cidx).reshape(1,1)))
+        self.acidx = np.vstack((self.acidx, np.asarray(cidx).reshape(1, 1)))
         # add constraint row to KKT
         c = np.zeros(shape=(1, self.AC_KKT.shape[1]))
         c[:, :self.C[cidx].shape[0]] = \
@@ -104,7 +98,6 @@ class ActiveSet(object):
             self.C[cidx].reshape(self.C[cidx].shape[0], 1)
         self.AC_KKT = np.hstack((self.AC_KKT, c))
 
-
     # remove constraint from the active set
     def _remove_active_constraint(self, wcidx):
         # remove the constraint index
@@ -113,7 +106,6 @@ class ActiveSet(object):
         kktidx = wcidx + self.H.shape[0]
         self.AC_KKT = np.delete(self.AC_KKT, (kktidx), axis=0)
         self.AC_KKT = np.delete(self.AC_KKT, (kktidx), axis=1)
-
 
     # calculate the active set step length and
     # return the index of the inactive constraint
@@ -142,13 +134,11 @@ class ActiveSet(object):
         icidx = icidx[den > self.tol]
         minidx = np.argmin(q)
         return q[minidx], icidx[minidx]
-   
 
     # calculate the active set Hessian target vector:
     #   ih = h - H * x
     def _calc_as_Hessian_vector(self, x):
         return self.h - np.dot(self.H, x)
-
 
     # uses null-space algorithm (Gill, 1978; Nocedal & Wright, 2006)
     # to solve the current active set KKT system. see details
@@ -168,7 +158,7 @@ class ActiveSet(object):
         h = self._calc_as_Hessian_vector(x)
         # use QR decomposition of active constraint matrix (transpose)
         Q, R = np.linalg.qr(self.AC_KKT[:self.H.shape[0],
-                                        self.H.shape[1]:], 'complete')
+                            self.H.shape[1]:], 'complete')
         # trim full R to get n x n upper diagonal form
         R = R[:m]
         # calculate the step direction vector:
@@ -193,7 +183,6 @@ class ActiveSet(object):
         # compute Lagrangians
         l = np.linalg.solve(R, np.dot(Qr.T, np.dot(self.H, -p) + h))
         return p, l
-
 
     # returns the new direction vector along with
     # the vector of lagrangian multipliers for the
@@ -222,7 +211,6 @@ class ActiveSet(object):
         # return new direction and lagrangian multipliers
         return wx_wl[:self.A.shape[1]], wx_wl[self.A.shape[1]:]
 
-
     # create the initial active constrint set
     def _init_active_set(self, x0):
         # initialize the KKT matrix with Hessian
@@ -238,7 +226,6 @@ class ActiveSet(object):
         for j in range(cx.shape[0]):
             if j < self.neq or np.isclose(cx[j], self.d[j], rtol=0, atol=self.tol):
                 self._add_active_constraint(j)
-
 
     # find the initial feasible solution
     # (if not user-provided) by solving the
@@ -278,8 +265,8 @@ class ActiveSet(object):
                 Ce = np.hstack((Ce, col))
                 co = np.hstack((co, [1]))
         # convert bounds array to list
-        cl = self.cl.reshape(self.cl.shape[0],).tolist()
-        cu = self.cu.reshape(self.cu.shape[0],).tolist()
+        cl = self.cl.reshape(self.cl.shape[0], ).tolist()
+        cu = self.cu.reshape(self.cu.shape[0], ).tolist()
         # create a list of bounds 2-tuples
         bds = []
         for i in range(Ce.shape[1]):
@@ -304,14 +291,12 @@ class ActiveSet(object):
             raise ValueError('ActiveSet: could not find feasible x0')
         return x0
 
-
     # input must be a 1d array or a 2d array with a single column
     def _check_1d_array(self, m, mnm):
         if m.ndim > 2 or (m.ndim == 2 and m.shape[1] != 1):
             str = 'ActiveSet: {} must be a 1d array '.format(mnm)
             str += 'or 2d with a single column'
             raise ValueError(str)
-
 
     # dimension and emptiness checks for input constraint arrays
     def _check_constraints(self, M, m, mtxnm, mnm, mtxemptyok=True):
@@ -347,7 +332,6 @@ class ActiveSet(object):
             self.d = np.vstack((self.d, m))
         return M, m
 
-
     # dimension checks for input bounds arrays
     def _check_bounds(self, b, bnm, upper=True):
         bds = np.asarray(b)
@@ -364,7 +348,6 @@ class ActiveSet(object):
             self.C = np.vstack((self.C, -np.identity(bds.shape[0])))
             self.d = np.vstack((self.d, -bds))
         return bds
-
 
     # check and prepare inputs for active set algorithm.
     # concatenate constraints in the following order:
@@ -399,7 +382,6 @@ class ActiveSet(object):
             str = 'ActiveSet: input must have at least one of '
             str += '[eq,ineq,bound] constraints'
             raise ValueError(str)
-
 
     def run(self, A, b, Ce, de, Ci, di, cu, cl, x0):
         """
@@ -497,7 +479,7 @@ class ActiveSet(object):
 
         Nocedal, J. & Wright, S.J. (2006). Numerical Optimization.
         Springer-Verlag. New York, NY.
-        
+
         Wong, E. (2011). Active-Set Methods for Quadratic Programming
         (Doctoral Dissertation). University of Calfiornia, San Diego, CA.
         """
@@ -515,6 +497,7 @@ class ActiveSet(object):
             # raise error if user-supplied x0 is infeasible
             if not self._feasible(x0):
                 raise ValueError('ActiveSet: supplied x0 is infeasible')
+        print("starting point x0", x0)
         self._init_active_set(x0)
         # main loop
         cur_x = x0
@@ -535,6 +518,7 @@ class ActiveSet(object):
             if np.isclose(len_p, 0, rtol=0, atol=self.tol):
                 # check for inequality constraints. terminate if
                 # there are no active inequality constraints.
+                l = np.array(l)
                 if l.shape[0] == self.neq:
                     return cur_x, self._calc_objective(cur_x), iter
                 # get the index of the minimum lagrange multiplier
@@ -565,7 +549,6 @@ class ActiveSet(object):
                     cur_x = cur_x + p
         # issue maxiter warning
         str = "ActiveSet: maximum number of iterations reached ({})".format(self.maxiter)
-        warn(str, category=RuntimeWarning)
         return cur_x, self._calc_objective(cur_x), iter
 
 
@@ -605,12 +588,10 @@ class ConstrainedLS(ActiveSet):
         self.H = 2 * np.dot(At, self.A)
         self.h = 2 * np.dot(At, self.b)
 
-
     # score the solution x:
     #  f(x) = || A * x - b || ** 2
     def _calc_objective(self, x):
-        return np.sum((np.dot(self.A, x) - self.b)**2)
-
+        return np.sum((np.dot(self.A, x) - self.b) ** 2)
 
     # command requires objective target vector
     def __call__(self, A, b, Ce=[], de=[], Ci=[], di=[], cu=[], cl=[], x0=[]):
@@ -631,40 +612,12 @@ class PortfolioOpt(ActiveSet):
         self.H = 2 * self.A
         self.h = np.zeros(shape=(self.H.shape[0], 1))
 
-
     # score the solution x:
     #   f(x) = x * Q * x
     def _calc_objective(self, x):
         return np.linalg.multi_dot([x.T, self.A, x])[0][0]
 
-
     # command does not require objective target vector
     def __call__(self, A, Ce=[], de=[], Ci=[], di=[], cu=[], cl=[], x0=[]):
         return self.run(A=A, b=[], Ce=Ce, de=de, Ci=Ci, di=di,
                         cu=cu, cl=cl, x0=x0)
-
-def convert_to_standard_QP(M, y, x):
-    m, n = M.shape[0], 2 * M.shape[0]
-    # objective function = 1/2 * x^T * G * x + c^T * x = 1/2*(x^T M^T M x - 2 y^T M x (+y^T y))
-    q_x = (1 / 2) * (x @ M.T @ M @ x - 2 * y.T @ M @ x + y @ y)
-    G = M.T @ M
-    c = 2 * M.T @ y
-
-    # constraints = 1*x<=1
-    ai = np.zeros((m, n))
-    bi = np.ones(m)
-    ai[:, :n // 2] = np.eye(m)
-    return G, c, ai, bi
-
-
-if __name__ == "__main__":
-    for m in range(5):
-        M = np.random.randn(m+1, 2 * (m + 1)) + 1
-        # compute eigenvalues from M and choose as y
-        y = np.linalg.eig(M.T @ M)[0][:m+1]
-        for i in range(3):
-            x = np.random.randn(2 * (m+1))
-            G, c, ai, bi = convert_to_standard_QP(M, y, x)
-            # measure running time
-            print(ActiveSet.run(ActiveSet(), G, c, [], [], ai, bi, [], [], x))
-
