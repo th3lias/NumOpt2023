@@ -148,6 +148,8 @@ class ActiveSet(object):
         m = self.AC_KKT.shape[0] - self.H.shape[0]
         # check if active constraint set is empty
         if m == 0:
+            # make self.H positive definite
+            self.H = self.H + np.identity(self.H.shape[0]) * self.tol
             p = np.linalg.solve(self.H, self._calc_as_Hessian_vector(x))
             return p, []
         # number of variables
@@ -174,11 +176,14 @@ class ActiveSet(object):
             Qnt = Qn.T
             # compute Cholesky decomposition for reduced Hessian
             Hz = np.linalg.multi_dot([Qnt, self.H, Qn])
+            # make Hz positive definite
+            Hz = Hz + np.identity(Hz.shape[0]) * self.tol
             L = np.linalg.cholesky(Hz)
             # compute null space target vector
             hz = np.dot(Qnt, np.linalg.multi_dot([self.H, Qr, py]) + h)
             pz = np.linalg.solve(L.T, np.linalg.solve(L, hz))
             # update step direction
+            pz = pz.astype(dtype="float64")
             p += np.dot(Qn, pz)
         # compute Lagrangians
         l = np.linalg.solve(R, np.dot(Qr.T, np.dot(self.H, -p) + h))
