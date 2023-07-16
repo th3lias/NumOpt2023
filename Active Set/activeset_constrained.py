@@ -80,58 +80,6 @@ def convert_to_standard_QP(M, y, x):
 # input validation and unit testing for ActiveSet base
 # class. unit tests verified against Matlab lsqlin().
 
-def simplextableau(c, A, b):
-    tol = 1e-14
-    res = ''
-    c = numpy.array(c)
-    A = numpy.array(A)
-    b = numpy.array(b)
-    m, n = A.shape
-    Ni = numpy.array(range(n - m))
-    Bi = numpy.array(range(m)) + n - m
-    x = numpy.zeros((n, 1))
-    xB = numpy.array(b)
-    combs = math.factorial(n) / (math.factorial(m) * math.factorial(n - m))
-    for k in range(4 * m):
-        l = numpy.linalg.solve(A[:, Bi], c[Bi])
-        sN = c[Ni] - numpy.matmul(numpy.transpose(A[:, Ni]), l)
-        sm = numpy.min(sN)
-        qq = numpy.argmin(sN)
-        q = Ni[qq]
-        xm = numpy.min(xB)
-        p = numpy.argmin(xB)
-        mu = numpy.minimum(sm, xm)
-        if mu >= -tol:
-            res = 'solution found'
-            break
-        if mu == sm:
-            a = A[:, q]
-            p = numpy.argmax(a)
-            phi = A[p, q]
-            if phi <= tol:
-                res = 'primal infeasible or unbounded'
-                break
-        else:
-            sigma = A[p, Ni]
-            qq = numpy.argmin(sigma)
-            q = Ni[qq]
-            phi = A[p, q]
-            if phi >= -tol:
-                res = 'duel infeasible or unbounded'
-        xB[p] = xB[p] / phi
-        A[p, :] = A[p, :] / phi
-        oi = (range(m))
-        oi.remove(p)
-        xB[oi] = xB[oi] - A[oi, q] * xB[p]
-        A[oi, :] = A[oi, :] - numpy.multiply.outer(A[oi, q], A[p, :])
-        Ni[Ni == q] = Bi[p]
-        Bi[p] = q
-    x[Bi, 0] = xB
-    opt = numpy.dot(c, x)
-    if len(res) == 0:
-        res = 'Iterations exceed maximum number, cycling may be happening.'
-    return x, opt[0], res
-
 def find_feasible_point(A, b ,method):
     n = A.shape[1]  # Dimension of variables
 
@@ -181,11 +129,10 @@ def main():
             start = time.time()
             x, scr, nit = cls(G, c, Ci=ai, di=bi, x0=x0)
             end = time.time()
-
+            print("Problem", m+1)
             print("M: ", M)
             print("y: ", y)
-            print("ai: ", ai)
-            print("bi: ", bi)
+            print("starting point x0", x0)
             print("final iterate: ", x)
             print("stopping criterion: ", tol)
             print("number of iterations: ", nit)
@@ -212,28 +159,20 @@ def main():
         c = list(c)
         G = list(G)
         optimization_result = minimize(objective_function, x0, args=(M, y))
-        print("unconstrained result: ", optimization_result.x)
+
         # calculate runnning time
         start = time.time()
-        try:
-
-            x, scr, nit = cls(G, c, Ci=ai, di=bi, x0=x0)
-        except LinAlgError:
-            print("LinAlgError")
-            continue
+        x, scr, nit = cls(G, c, Ci=ai, di=bi, x0=x0)
         end = time.time()
-
         print("M: ", M)
         print("y: ", y)
-        print("ai: ", ai)
-        print("bi: ", bi)
+        print("starting point x0", x0)
         print("final iterate: ", x)
         print("stopping criterion: ", tol)
         print("number of iterations: ", nit)
         print("running time: ", end - start)
-
+        print("unconstrained result: ", optimization_result.x)
         print("#############################################")
-    print("finished")
 
 if __name__ == "__main__":
     sys.exit(int(main() or 0))

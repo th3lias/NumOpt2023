@@ -502,7 +502,6 @@ class ActiveSet(object):
             # raise error if user-supplied x0 is infeasible
             if not self._feasible(x0):
                 raise ValueError('ActiveSet: supplied x0 is infeasible')
-        print("starting point x0", x0)
         self._init_active_set(x0)
         # main loop
         cur_x = x0
@@ -546,7 +545,7 @@ class ActiveSet(object):
                 alpha, cidx = self._calc_step_length(cur_x, p)
                 # if alpha = 0 then return current solution
                 if np.isclose(alpha, 0, rtol=0, atol=self.tol):
-                    return cur_x, self._calc_objective(A, b, cur_x), iter
+                    return cur_x, self._calc_objective(A), iter
                 elif alpha < 1:
                     self._add_active_constraint(cidx)
                     cur_x = cur_x + alpha * p
